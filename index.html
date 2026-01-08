@@ -1,23 +1,122 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>PyScript Offline</title>
-        <script src="./mini-coi-fd.js"></script>
-        <script type="module" src="./pyscript/core.js" offline></script>
-        <link rel="stylesheet" href="./pyscript/core.css">
-    </head>
-    <body>
-        <script type="mpy">
-            from pyscript import document
+<head>
+<meta charset="UTF-8">
+<title>Offline Python in Browser</title>
 
-            document.body.append("MicroPython Offline", document.createElement("hr"))
-        </script>
-        <script type="py" worker>
-            from pyscript import document
+<!-- Load Pyodide (OFFLINE) -->
+<script src="./pyodide/pyodide.js"></script>
 
-            document.body.append("Pyodide Offline")
-        </script>
-    </body>
+<style>
+body{
+  background:#0d1117;
+  color:#c9d1d9;
+  font-family:Consolas, monospace;
+  padding:20px;
+}
+textarea{
+  width:100%;
+  height:200px;
+  background:#161b22;
+  color:#c9d1d9;
+  border:1px solid #30363d;
+  padding:10px;
+}
+button{
+  margin-top:10px;
+  padding:10px 20px;
+  background:#238636;
+  color:#fff;
+  border:none;
+  cursor:pointer;
+}
+pre{
+  background:#161b22;
+  border:1px solid #30363d;
+  padding:12px;
+  margin-top:12px;
+  white-space:pre-wrap;
+}
+#status{margin-bottom:10px}
+</style>
+</head>
+
+<body>
+
+<h3>🐍 Offline Python in Browser</h3>
+<div id="status">Loading Pyodide…</div>
+
+<textarea id="code">
+print("Hello Offline Python")
+print("Sum:", sum(range(1, 101)))
+
+def multiply(a, b):
+    return a * b
+
+print("Multiply:", multiply(6, 7))
+</textarea>
+
+<br>
+<button onclick="runPython()">▶ Run Code</button>
+
+<pre id="output">Waiting…</pre>
+
+<script>
+let pyodide = null;
+
+async function initPyodide(){
+  try{
+    pyodide = await loadPyodide({
+      indexURL: "./pyodide/"
+    });
+
+    pyodide.runPython(`
+import sys
+from io import StringIO
+sys.stdout = StringIO()
+sys.stderr = StringIO()
+    `);
+
+    document.getElementById("status").textContent =
+      "✅ Pyodide Loaded (OFFLINE)";
+    document.getElementById("output").textContent =
+      "Python ready. Click Run.";
+  }catch(e){
+    document.getElementById("status").textContent =
+      "❌ Pyodide load failed";
+    document.getElementById("output").textContent =
+      e.toString();
+    console.error(e);
+  }
+}
+
+async function runPython(){
+  if(!pyodide){
+    document.getElementById("output").textContent =
+      "Pyodide not loaded";
+    return;
+  }
+
+  pyodide.runPython(`
+import sys
+from io import StringIO
+sys.stdout = StringIO()
+sys.stderr = StringIO()
+  `);
+
+  await pyodide.runPythonAsync(
+    document.getElementById("code").value
+  );
+
+  const out = pyodide.runPython("sys.stdout.getvalue()");
+  const err = pyodide.runPython("sys.stderr.getvalue()");
+
+  document.getElementById("output").textContent =
+    err ? err : out || "(no output)";
+}
+
+initPyodide();
+</script>
+
+</body>
 </html>
